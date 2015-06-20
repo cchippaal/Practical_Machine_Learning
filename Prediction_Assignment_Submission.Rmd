@@ -1,0 +1,88 @@
+---
+title: "Prediction Assignment Submission"
+author: "Chakra C"
+date: "Friday, June 15, 2015"
+output: html_document
+---
+
+## Data Cleaning Process
+
+In this data cleaning process, we apply Index on first row and removed NA from all columns. The result of the testing data were saved as traing2.csv and testing2.csv.
+
+```{r}
+# Delete data from the current working library
+rm(list = ls())
+# Read the clean training table and testing data 
+pml_training <- read.table(file = "pml-training2.csv", 
+                       header = TRUE, sep = ",", quote = "")
+pml_testing <- read.table(file = "pml-testing2.csv", 
+                      header = TRUE, sep = ",", quote = "")
+# Modify the numeric data type to integer type so that data the 
+# same data is available in training data and testing data
+pml_training$magnet_dumbbell_z <- as.integer(pml_training$magnet_dumbbell_z)
+pml_training$magnet_forearm_y <- as.integer(pml_training$magnet_forearm_y)
+pml_training$magnet_forearm_z <- as.integer(pml_training$magnet_forearm_z)
+# Modify 
+levels(pml_testing$new_window) <- levels(pml_training$new_window)
+```
+
+## Exploratory Data Analysis
+
+Apply the cross validation for to find out of sample errors.
+
+```{r}
+# Install randomForest package
+# Install.packages("randomForest")
+library(randomForest)
+# install.packages("caret")
+library(caret)
+```
+
+## Exploratory Data Analysis
+
+```{r}
+set.seed(111)
+# Set-up the cross-validation excersize
+fitControl = trainControl( method = "cv", number = 2)
+# Apply the cross validation
+cv <- train(classe ~ ., data = pml_training, method = "rf", 
+  trControl = fitControl)
+cv$bestTune$mtry
+```
+
+## Exploratory Data Analysis
+```{r}
+cv
+```
+
+## Developed the random forest model with full training model
+Good sample number of random variables is: `r cv$bestTune$mtry`
+```{r}
+RandomForest = randomForest(classe ~ ., data = pml_training, 
+                            mtry = cv$bestTune$mtry)
+PredictForTrain = predict(RandomForest)
+table(PredictForTrain, pml_training$classe)
+```
+
+## Anticipate testing data
+```{r}
+PredictForest = predict(RandomForest, newdata = pml_testing)
+PredictForest
+```
+
+## Copy the anticipated data to files
+```{r}
+# Vector Function to files
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_", i ,".txt")
+    write.table(x[i], file = filename, quote = FALSE,
+                row.names = FALSE, col.names = FALSE)
+  }
+}
+# Call the Vector function
+pml_write_files(PredictForest)
+
+```
+

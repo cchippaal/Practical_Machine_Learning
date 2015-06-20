@@ -1,0 +1,57 @@
+---
+title: "Practical Machine Learning - Prediction Assignment Writeup"
+author: "Chakra C"
+date: "Wednesday, June 17, 2015"
+output: html_document
+---
+
+
+The goal of this project is to predict the manner in which people did the exercise. And the data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. Note: The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv and the test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+## Pre-processing Data - Initialize
+
+In the raw data set, delete columns that have string containing null and delete the first 7 columns like X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, num_window. Which are not related to prediction fo the results.
+
+```{r}
+library(caret)
+set.seed(12463)
+
+training <- read.csv("pml-training.csv", stringsAsFactors=FALSE)
+training$classe <- as.factor(training$classe)
+training <- training[,-nearZeroVar(training)]
+training <- training[,-c(1,2,3,4,5,6,7)]
+
+```
+
+Found there are many NA data in the data set, apply KnnImpute method to impute those values. Applied each features for standardize to use PCA to reduce features.
+
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.75, list=FALSE)
+training <- training[inTrain,]
+testing <- training[-inTrain,]
+
+preObj <- preProcess(training[,-length(training)],method=c("center", "scale", "knnImpute", "pca"), thresh=0.9)
+clean_data <- predict(preObj,training[,-length(training)])
+```
+
+## Predictions
+
+Applied knn methos from the above clean data set processing to build model. Used testing data set for to evaluate the performance of the model and final accurancy is 0.9748. 
+
+```{r}
+modelFit <- train(training$classe ~.,data=clean_data, method="knn")
+test <- predict(preObj, testing[,-length(testing)])
+confusionMatrix(testing$classe, predict(modelFit,test))
+```
+
+Overall I loaded the testing data file and below are the forecast the test results:
+
+```{r}
+testing <- read.csv("pml-testing.csv", stringsAsFactors=FALSE)
+testing <- testing[,names(testing) %in% names(training)]
+
+test <- predict(preObj, testing)
+predict_result <- predict(modelFit, test)
+```
